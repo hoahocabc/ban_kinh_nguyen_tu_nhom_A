@@ -80,37 +80,33 @@ let tableOffsetX = 0;
 let tableOffsetY = 0;
 let dragging = false;
 let prevMouseX, prevMouseY;
+// Đặt đường kính hạt nhân cố định, nhỏ hơn đường kính vòng electron nhỏ nhất của Rn.
+const nucleusDiameterFixed = 8; // giảm kích thước hạt nhân
 
 function preload() {
-  // Tải font Arial từ file "Arial.ttf", đảm bảo file này nằm cùng thư mục với các file khác.
   myFont = loadFont("Arial.ttf");
 }
 
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
+  smooth();
   textFont(myFont);
   textAlign(CENTER, CENTER);
   angleMode(DEGREES);
 }
 
 function draw() {
-  // Nền màn hình đen hoàn toàn.
   background(0);
   
-  // Vẽ watermark "HÓA HỌC ABC" dạng mờ, đặt phía sau các quả cầu.
-  // Ta dịch ra xa về phía sau theo trục Z.
+  // (Watermark có thể giữ hoặc bỏ tùy ý)
   push();
-    // Để watermark luôn xuất hiện ở trung tâm màn hình, ta đặt tại gốc.
-    // Dịch về phía sau (z âm) để hiển thị bên dưới các đối tượng trong không gian 3D.
     translate(0, 0, -300);
-    // Vẽ chữ với màu trắng mờ.
     fill(255, 255, 255, 30);
     noStroke();
     textSize(150);
     text("HÓA HỌC ABC", 0, 0);
   pop();
   
-  // Cho phép xoay camera bằng chuột.
   orbitControl();
   
   let cols = 8;
@@ -118,17 +114,15 @@ function draw() {
   let spacingX = 150;
   let spacingY = 150;
   
-  // Tính điểm đầu (top-left) của lưới (trung tâm canvas) có offset khi kéo.
   let startX = -((cols - 1) * spacingX) / 2 + tableOffsetX;
   let startY = -((rows - 1) * spacingY) / 2 + tableOffsetY;
   
-  // Ánh sáng cho khung cảnh.
   ambientLight(150);
   directionalLight(255, 255, 255, 0, -1, 0);
   
-  // Vẽ các hàng của bảng.
+  let atomicCounter = 0;
+  
   for (let i = 0; i < rows; i++) {
-    // Vẽ nhãn chu kỳ bên trái.
     push();
       let labelX = startX - spacingX * 0.8;
       let labelY = startY + i * spacingY;
@@ -140,34 +134,52 @@ function draw() {
     pop();
     
     for (let j = 0; j < cols; j++) {
-      // Bỏ các hình cầu nhỏ của chu kỳ 1, từ nhóm IIA đến VIIA.
-      if (i === 0 && j >= 1 && j <= 6) {
-        continue;
-      }
+      if (i === 0 && j >= 1 && j <= 6) continue;
       
       push();
         let x = startX + j * spacingX;
         let y = startY + i * spacingY;
         translate(x, y, 0);
         
-        // Lấy dữ liệu nguyên tử.
         let data = atomicData[i][j];
-        let sphereDisplayRadius;
+        let outerRadius;
         if (data.symbol !== "" && data.radius > 0) {
-          sphereDisplayRadius = map(data.radius, 30, 300, 20, 60);
+          let mappedRadius = map(data.radius, 30, 300, 20, 60);
+          outerRadius = mappedRadius;
         } else {
-          sphereDisplayRadius = 5;
+          outerRadius = 5;
         }
         
-        // Vẽ hình cầu với chất liệu sáng và đường bo mịn hơn.
-        noStroke();
-        ambientMaterial(240, 240, 80);
-        sphere(sphereDisplayRadius, 48, 32);
+        // Vẽ các vòng electron
+        let numCircles = i + 1;
+        noFill();
+        stroke(240, 240, 80);
+        strokeWeight(2);
+        for (let k = 0; k < numCircles; k++) {
+          let factor = (numCircles - k) / numCircles;
+          let d = outerRadius * 2 * factor;
+          ellipse(0, 0, d, d);
+        }
         
-        // Vẽ nhãn nguyên tố: nằm chính giữa, phía trước, bên ngoài mặt cầu (màu đen).
+        // Vẽ hạt nhân nếu có nguyên tố. 
+        if (data.symbol !== "") {
+          atomicCounter++;
+          let nuclearCharge = atomicCounter; // điện tích theo thứ tự nguyên tử
+          push();
+            fill(255, 0, 0);
+            noStroke();
+            // Vẽ hạt nhân với đường kính đã cố định
+            ellipse(0, 0, nucleusDiameterFixed, nucleusDiameterFixed);
+            fill(255);
+            textSize(5); // giảm cỡ chữ để vừa trong hạt nhân
+            text(nuclearCharge + "+", 0, 0);
+          pop();
+        }
+        
+        // Vẽ kí hiệu nguyên tố màu trắng.
         push();
-          translate(0, 0, sphereDisplayRadius + 5);
-          fill(0);
+          translate(0, 0, 5);
+          fill(255);
           noStroke();
           textSize(20);
           if (data.symbol !== "") {
@@ -175,9 +187,9 @@ function draw() {
           }
         pop();
         
-        // Vẽ giá trị bán kính bên dưới hình cầu.
+        // Vẽ bán kính nằm bên dưới
         push();
-          translate(0, sphereDisplayRadius + 15, 0);
+          translate(0, outerRadius + 15, 0);
           fill(255);
           noStroke();
           textSize(16);
@@ -189,7 +201,7 @@ function draw() {
     }
   }
   
-  // Vẽ nhãn nhóm (cột) phía trên bảng.
+  // Vẽ nhãn nhóm phía trên
   for (let j = 0; j < cols; j++) {
     push();
       let labelX = startX + j * spacingX;
@@ -203,7 +215,7 @@ function draw() {
   }
 }
 
-// Cho phép di chuyển bảng khi nhấn Ctrl + chuột trái.
+// Di chuyển bảng
 function mousePressed() {
   if (mouseButton === LEFT && keyIsDown(CONTROL)) {
     dragging = true;
