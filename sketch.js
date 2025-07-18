@@ -180,7 +180,7 @@ function setup() {
 
   const baseZoomX = windowWidth / 1050;
   const baseZoomY = windowHeight / 750;
-  initialZoomFactor = 0.5 * min(baseZoomX, baseZoomY);
+  initialZoomFactor = 0.45 * min(baseZoomX, baseZoomY);
   zoomFactor = initialZoomFactor;
   tableOffsetX = 0;
   tableOffsetY = 0;
@@ -306,9 +306,9 @@ function draw() {
 
 Hướng dẫn:
 - Bấm giữ chuột trái để di chuyển bảng.
-- Lăn chuột tại vị trí con trỏ để phóng to hoặc thu nhỏ, điểm dưới con trỏ luôn cố định.
+- Lăn chuột để phóng to hoặc thu nhỏ.
 - Nhấp đúp chuột trái để quay về trạng thái hiển thị ban đầu.
-@ HÓA HỌC ABC`, noteXWorld, noteYWorld);
+© HÓA HỌC ABC`, noteXWorld, noteYWorld);
     pop();
     
   pop();
@@ -364,6 +364,6 @@ function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
   const baseZoomX = windowWidth / 1050;
   const baseZoomY = windowHeight / 750;
-  initialZoomFactor = 0.5 * min(baseZoomX, baseZoomY);
+  initialZoomFactor = 0.45 * min(baseZoomX, baseZoomY);
   zoomFactor = initialZoomFactor;
 }
