@@ -1,12 +1,4 @@
-// Dữ liệu bán kính nguyên tử theo dữ liệu bạn gửi, được chia thành hai bộ: Lý thuyết và Thực nghiệm.
-// Dữ liệu này được sắp xếp theo chu kỳ và nhóm (chỉ lấy nguyên tố nhóm A, tức là các phần tử chính của bảng tuần hoàn).
-//
-// Bố cục mỗi chu kỳ là một mảng gồm 8 phần tử, đại diện cho các nhóm sau:
-// [ IA, IIA, IIIA, IVA, VA, VIA, VIIA, VIIIA ]
-//
-// Lưu ý: Với những phần tử không có dữ liệu cho một chu kỳ nào đó (do không thuộc nhóm chính),
-// chúng ta sẽ đặt giá trị mặc định là { symbol: "", radius: 0 }.
-
+// Dữ liệu bán kính và các mảng khác giữ nguyên
 const theoreticalAtomicData = [
   // Chu kỳ 1:
   [
@@ -165,14 +157,11 @@ let dragging = false;
 let prevMouseX, prevMouseY;
 const nucleusDiameterFixed = 6;
 
-// Kích thước cơ sở của bảng:
-// Chiều rộng cơ sở = 7 * 150 = 1050, chiều cao cơ sở = 5 * 150 = 750.
+// Kích thước cơ sở của bảng
 const cols = 8;
 const rows = 6;
 const spacingX = 150;
 const spacingY = 150;
-
-// Tỉ lệ zoom ban đầu (50% của bảng vừa với màn hình)
 let initialZoomFactor;
 let zoomFactor;
 
@@ -182,16 +171,17 @@ function preload() {
 
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
+  // Nếu thiết bị không mạnh, có thể giảm pixelDensity xuống 1
+  pixelDensity(1);
   smooth();
   textFont(myFont);
   textAlign(CENTER, CENTER);
-  angleMode(DEGREES);
+  angleMode(DEGREES);  // Sử dụng độ thay vì radian
 
   const baseZoomX = windowWidth / 1050;
   const baseZoomY = windowHeight / 750;
   initialZoomFactor = 0.5 * min(baseZoomX, baseZoomY);
   zoomFactor = initialZoomFactor;
-
   tableOffsetX = 0;
   tableOffsetY = 0;
 
@@ -200,53 +190,60 @@ function setup() {
   toggleButton.mousePressed(toggleData);
 }
 
+// Hàm tự vẽ hình tròn mịn với số đỉnh cao theo mức độ zoom
+function drawSmoothEllipse(x, y, w, h, detail) {
+  const a = w / 2;
+  const b = h / 2;
+  beginShape();
+  for (let i = 0; i < detail; i++) {
+    let angle = map(i, 0, detail, 0, 360);
+    let vx = x + a * cos(angle);
+    let vy = y + b * sin(angle);
+    vertex(vx, vy);
+  }
+  endShape(CLOSE);
+}
+
 function draw() {
   background(0);
-
-  orbitControl();
-
   push();
     scale(zoomFactor);
-
-    // Tọa độ bắt đầu của bảng được căn giữa
     const startX = -((cols - 1) * spacingX) / 2 + tableOffsetX;
     const startY = -((rows - 1) * spacingY) / 2 + tableOffsetY;
-
+    
     ambientLight(150);
     directionalLight(255, 255, 255, 0, -1, 0);
-
+    
     const atomicData = useExperimental ? experimentalAtomicData : theoreticalAtomicData;
-
-    // Vẽ các hàng với nhãn "Chu kỳ"
+  
+    // Vẽ các hàng (chu kỳ)
     for (let i = 0; i < rows; i++) {
       push();
-        const labelX = startX - spacingX * 0.8;
-        const labelY = startY + i * spacingY;
-        translate(labelX, labelY, 0);
+        translate(startX - spacingX * 0.8, startY + i * spacingY, 0);
         fill(255);
         noStroke();
         textSize(20);
         text("Chu kỳ " + (i + 1), 0, 0);
       pop();
-
-      // Vẽ các cột của bảng
+      
       for (let j = 0; j < cols; j++) {
-        // Ở chu kỳ 1, bỏ qua các ô không có dữ liệu (với j từ 1 đến 6)
         if (i === 0 && j >= 1 && j <= 6) continue;
+        
+        const x = startX + j * spacingX;
+        const y = startY + i * spacingY;
+        const data = atomicData[i][j];
+        
         push();
-          const x = startX + j * spacingX;
-          const y = startY + i * spacingY;
           translate(x, y, 0);
-
-          const data = atomicData[i][j];
-          let outerRadius;
+          let outerRadius = 5;
           if (data.symbol !== "" && data.radius > 0) {
             outerRadius = map(data.radius, 30, 300, 20, 60);
-          } else {
-            outerRadius = 5;
           }
-
-          // Vẽ các vòng electron
+          
+          // Xác định chi tiết động dựa trên zoomFactor:
+          // Khi zoom thấp (zoomFactor nhỏ) thì giảm chi tiết, khi zoom cao tăng
+          const detailLevel = floor(map(zoomFactor, 0.1, 5, 40, 150));
+          
           const numCircles = i + 1;
           noFill();
           stroke(240, 240, 80);
@@ -254,23 +251,20 @@ function draw() {
           for (let k = 0; k < numCircles; k++) {
             const factor = (numCircles - k) / numCircles;
             const d = outerRadius * 2 * factor;
-            ellipse(0, 0, d, d);
+            drawSmoothEllipse(0, 0, d, d, detailLevel);
           }
-
-          // Vẽ hạt nhân nếu có dữ liệu
+          
           if (data.symbol !== "") {
-            const nuclearCharge = atomicNumbers[data.symbol];
             push();
               fill(255, 0, 0);
               noStroke();
               ellipse(0, 0, nucleusDiameterFixed, nucleusDiameterFixed);
               fill(255);
               textSize(3);
-              text(nuclearCharge + "+", 0, 0);
+              text(atomicNumbers[data.symbol] + "+", 0, 0);
             pop();
           }
-
-          // Hiển thị bán kính nguyên tử phía dưới vòng electron
+          
           push();
             translate(0, outerRadius + 15, 0);
             fill(255);
@@ -285,25 +279,21 @@ function draw() {
         pop();
       }
     }
-
-    // Vẽ nhãn nhóm (cột) phía trên bảng
+    
     for (let j = 0; j < cols; j++) {
       push();
-        const labelX = startX + j * spacingX;
-        const labelY = startY - spacingY * 0.8;
-        translate(labelX, labelY, 0);
+        translate(startX + j * spacingX, startY - spacingY * 0.8, 0);
         fill(255);
         noStroke();
         textSize(20);
         text(groupNames[j], 0, 0);
       pop();
     }
-
-    // Vẽ ghi chú "Nguồn dữ liệu:" dựa vào vị trí của ô "Cs: 265 pm" (chu kỳ 6, cột 0)
+    
     const csOuter = map(265, 30, 300, 20, 60);
-    const noteYWorld = startY + 5 * spacingY + csOuter + 15 + 30;  // thêm margin 30 đơn vị
+    const noteYWorld = startY + 5 * spacingY + csOuter + 15 + 30;
     const noteXWorld = startX - spacingX * 0.8;
-
+    
     push();
       textAlign(LEFT, TOP);
       textSize(16);
@@ -313,13 +303,14 @@ function draw() {
 2. NIST (National Institute of Standards and Technology).
 3. IUPAC Periodic Table.
 4. RSC (Royal Society of Chemistry).
-Lưu ý:
-Bấm giữ chuột trái để xoay bảng.
-Bấm giữ chuột phải để di chuyển bảng.
-Lăn chuột để phóng to/thu nhỏ.
+
+Hướng dẫn:
+- Bấm giữ chuột trái để di chuyển bảng.
+- Lăn chuột tại vị trí con trỏ để phóng to hoặc thu nhỏ, điểm dưới con trỏ luôn cố định.
+- Nhấp đúp chuột trái để quay về trạng thái hiển thị ban đầu.
 @ HÓA HỌC ABC`, noteXWorld, noteYWorld);
     pop();
-
+    
   pop();
 }
 
@@ -328,22 +319,18 @@ function toggleData() {
   toggleButton.html("Chuyển sang bán kính " + (useExperimental ? "Lý thuyết" : "Thực nghiệm"));
 }
 
-// Cập nhật hàm mouseWheel để zoom mượt với trung tâm tại vị trí con trỏ chuột
 function mouseWheel(event) {
   const oldZoom = zoomFactor;
-  // Sử dụng công thức exponential cho zoom: một bước nhỏ hơn và mượt hơn
-  const zoomSensitivity = 0.001; 
+  const zoomSensitivity = 0.001;
   zoomFactor = zoomFactor * Math.exp(-event.deltaY * zoomSensitivity);
-  
-  // Điều chỉnh tableOffset sao cho vị trí con trỏ chuột giữ nguyên vị trí hiển thị
-  tableOffsetX -= (mouseX - width / 2) * (1 / zoomFactor - 1 / oldZoom);
-  tableOffsetY -= (mouseY - height / 2) * (1 / zoomFactor - 1 / oldZoom);
-
-  return false; // Ngăn cuộn trang của trình duyệt
+  zoomFactor = constrain(zoomFactor, 0.1, 5);
+  tableOffsetX += (mouseX - width / 2) * (1 / zoomFactor - 1 / oldZoom);
+  tableOffsetY += (mouseY - height / 2) * (1 / zoomFactor - 1 / oldZoom);
+  return false;
 }
 
 function mousePressed() {
-  if (mouseButton === LEFT && keyIsDown(CONTROL)) {
+  if (mouseButton === LEFT) {
     dragging = true;
     prevMouseX = mouseX;
     prevMouseY = mouseY;
@@ -362,6 +349,14 @@ function mouseDragged() {
     tableOffsetY += dy / zoomFactor;
     prevMouseX = mouseX;
     prevMouseY = mouseY;
+  }
+}
+
+function doubleClicked() {
+  if (mouseButton === LEFT) {
+    zoomFactor = initialZoomFactor;
+    tableOffsetX = 0;
+    tableOffsetY = 0;
   }
 }
 
