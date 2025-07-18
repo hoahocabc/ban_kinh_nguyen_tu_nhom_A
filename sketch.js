@@ -132,7 +132,7 @@ const experimentalAtomicData = [
     { symbol: "", radius: 0 },
     { symbol: "", radius: 0 },
     { symbol: "", radius: 0 },
-    { symbol: "He", radius: 32 }
+    { symbol: "He", radius: 28 }
   ],
   // Chu kỳ 2:
   [
@@ -209,7 +209,7 @@ let tableOffsetX = 0;
 let tableOffsetY = 0;
 let dragging = false;
 let prevMouseX, prevMouseY;
-const nucleusDiameterFixed = 7; // Đã sửa: kích thước hạt nhân bằng 7
+const nucleusDiameterFixed = 7; // Kích thước hạt nhân
 // Kích thước cơ sở của bảng
 const cols = 8;
 const rows = 6;
@@ -217,18 +217,21 @@ const spacingX = 150;
 const spacingY = 150;
 let initialZoomFactor;
 let zoomFactor;
-// Kích thước electron mới đặt là 3 (đã sửa)
+// Kích thước electron được đặt là 3
 const electronSize = 3;
+let myFont;
 
 function preload() {
   myFont = loadFont("Arial.ttf");
 }
 
 function setup() {
-  createCanvas(windowWidth, windowHeight, WEBGL);
+  // Chuyển sang chế độ 2D (không dùng WEBGL)
+  createCanvas(windowWidth, windowHeight);
   pixelDensity(1);
   smooth();
   textFont(myFont);
+  // Căn giữa text cho toàn bộ sketch
   textAlign(CENTER, CENTER);
   angleMode(DEGREES);
 
@@ -236,6 +239,8 @@ function setup() {
   const baseZoomY = windowHeight / 750;
   initialZoomFactor = 0.45 * min(baseZoomX, baseZoomY);
   zoomFactor = initialZoomFactor;
+  
+  // Ban đầu đặt bảng vào giữa canvas bằng cách dịch gốc tại (width/2, height/2)
   tableOffsetX = 0;
   tableOffsetY = 0;
 
@@ -259,20 +264,21 @@ function drawSmoothEllipse(x, y, w, h, detail) {
 
 function draw() {
   background(0);
+  
   push();
+    // Dịch gốc (origin) đến giữa màn hình để bảng hiển thị chính giữa
+    translate(width / 2, height / 2);
     scale(zoomFactor);
+    
     const startX = -((cols - 1) * spacingX) / 2 + tableOffsetX;
     const startY = -((rows - 1) * spacingY) / 2 + tableOffsetY;
-    
-    ambientLight(150);
-    directionalLight(255, 255, 255, 0, -1, 0);
     
     const atomicData = useExperimental ? experimentalAtomicData : theoreticalAtomicData;
   
     // Vẽ các hàng (chu kỳ)
     for (let i = 0; i < rows; i++) {
       push();
-        translate(startX - spacingX * 0.8, startY + i * spacingY, 0);
+        translate(startX - spacingX * 0.8, startY + i * spacingY);
         fill(255);
         noStroke();
         textSize(20);
@@ -287,7 +293,7 @@ function draw() {
         const data = atomicData[i][j];
         
         push();
-          translate(x, y, 0);
+          translate(x, y);
           let outerRadius = 5;
           if (data.symbol !== "" && data.radius > 0) {
             outerRadius = map(data.radius, 30, 300, 20, 60);
@@ -300,37 +306,32 @@ function draw() {
           const numCircles = i + 1;
           noFill();
           stroke(240, 240, 80);
-          strokeWeight(1.5);
+          strokeWeight(0.7);
           for (let k = 0; k < numCircles; k++) {
             const factor = (numCircles - k) / numCircles;
             const d = outerRadius * 2 * factor;
             drawSmoothEllipse(0, 0, d, d, detailLevel);
           }
           
-          // Vẽ hạt nhân dưới dạng hình cầu với hiệu ứng 3D
+          // Vẽ hạt nhân dưới dạng hình tròn với nhãn điện tích nhỏ hơn
           if (data.symbol !== "") {
             push();
-              // Sử dụng ambientMaterial để tạo hiệu ứng bóng sáng cho hạt nhân
-              ambientMaterial(255, 0, 0);
+              fill(255, 0, 0);
               noStroke();
-              sphere(nucleusDiameterFixed / 2);
-              // Vẽ số proton lên giữa (vấn đề hiển thị text trong 3D có thể bị phẳng)
-              push();
-                translate(0, 0, nucleusDiameterFixed);
-                fill(255);
-                textSize(3);
-                text(atomicNumbers[data.symbol] + "+", 0, 0);
-              pop();
+              ellipse(0, 0, nucleusDiameterFixed, nucleusDiameterFixed);
+              // Đảm bảo căn giữa cho nhãn điện tích, dùng font nhỏ hơn (giảm xuống 80%)
+              fill(255);
+              textAlign(CENTER, CENTER);
+              textSize(nucleusDiameterFixed * 0.45);
+              text(atomicNumbers[data.symbol] + "+", 0, 0);
             pop();
           }
           
-          // Vẽ các electron theo cấu hình, sử dụng sphere để tạo hiệu ứng hình cầu
+          // Vẽ các electron cùng với nhãn căn giữa. Dịch vị trí nhãn hơi lên để căn giữa so với electron.
           if (data.symbol !== "" && electronConfigs[data.symbol]) {
             let config = electronConfigs[data.symbol];
             let nShells = min(config.length, numCircles);
-            // Với cấu hình theo thứ tự từ trong ra ngoài: s=0 (vòng trong nhất)
             for (let s = 0; s < nShells; s++) {
-              // Tính bán kính cho mỗi lớp electron (s=0 là trong nhất)
               let factor = (s + 1) / numCircles;
               let d = outerRadius * 2 * factor;
               let r = d / 2;
@@ -340,24 +341,23 @@ function draw() {
                 let ex = r * cos(angle);
                 let ey = r * sin(angle);
                 push();
-                  translate(ex, ey, 0);
-                  ambientMaterial(255);
+                  translate(ex, ey);
+                  fill(255);
                   noStroke();
-                  sphere(electronSize / 2);
-                  // Vẽ ký hiệu '-' lên electron (text được đẩy ra phía trước để dễ đọc)
-                  push();
-                    translate(0, 0, electronSize);
-                    fill(0);
-                    textSize(3);
-                    text("-", 0, 0);
-                  pop();
+                  ellipse(0, 0, electronSize, electronSize);
+                  // Căn giữa nhãn electron và dịch lên một chút (-electronSize * 0.2)
+                  fill(0);
+                  textAlign(CENTER, CENTER);
+                  textSize(electronSize);
+                  text("-", 0, -electronSize * 0.2);
                 pop();
               }
             }
           }
           
+          // Vẽ thông tin ký hiệu và bán kính bên dưới
           push();
-            translate(0, outerRadius + 15, 0);
+            translate(0, outerRadius + 15);
             fill(255);
             noStroke();
             textSize(16);
@@ -371,9 +371,10 @@ function draw() {
       }
     }
     
+    // Vẽ tên các nhóm (IA, IIA, …)
     for (let j = 0; j < cols; j++) {
       push();
-        translate(startX + j * spacingX, startY - spacingY * 0.8, 0);
+        translate(startX + j * spacingX, startY - spacingY * 0.8);
         fill(255);
         noStroke();
         textSize(20);
@@ -381,6 +382,7 @@ function draw() {
       pop();
     }
     
+    // Vẽ phần ghi chú
     const csOuter = map(265, 30, 300, 20, 60);
     const noteYWorld = startY + 5 * spacingY + csOuter + 15 + 30;
     const noteXWorld = startX - spacingX * 0.8;
