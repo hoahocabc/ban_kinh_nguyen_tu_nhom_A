@@ -1,3 +1,57 @@
+// Dữ liệu cấu hình electron cho các nguyên tố
+const electronConfigs = {
+  // Nhóm IA
+  "H": [1],
+  "Li": [2, 1],
+  "Na": [2, 8, 1],
+  "K":  [2, 8, 8, 1],
+  "Rb": [2, 8, 18, 8, 1],
+  "Cs": [2, 8, 18, 18, 8, 1],
+  // Nhóm IIA
+  "Be": [2, 2],
+  "Mg": [2, 8, 2],
+  "Ca": [2, 8, 8, 2],
+  "Sr": [2, 8, 18, 8, 2],
+  "Ba": [2, 8, 18, 18, 8, 2],
+  // Nhóm IIIA
+  "B":  [2, 3],
+  "Al": [2, 8, 3],
+  "Ga": [2, 8, 18, 3],
+  "In": [2, 8, 18, 18, 3],
+  "Tl": [2, 8, 18, 32, 18, 3],
+  // Nhóm IVA
+  "C":  [2, 4],
+  "Si": [2, 8, 4],
+  "Ge": [2, 8, 18, 4],
+  "Sn": [2, 8, 18, 18, 4],
+  "Pb": [2, 8, 18, 32, 18, 4],
+  // Nhóm VA
+  "N":  [2, 5],
+  "P":  [2, 8, 5],
+  "As": [2, 8, 18, 5],
+  "Sb": [2, 8, 18, 18, 5],
+  "Bi": [2, 8, 18, 32, 18, 5],
+  // Nhóm VIA
+  "O":  [2, 6],
+  "S":  [2, 8, 6],
+  "Se": [2, 8, 18, 6],
+  "Te": [2, 8, 18, 18, 6],
+  "Po": [2, 8, 18, 32, 18, 6],
+  // Nhóm VIIA
+  "F":  [2, 7],
+  "Cl": [2, 8, 7],
+  "Br": [2, 8, 18, 7],
+  "I":  [2, 8, 18, 18, 7],
+  "At": [2, 8, 18, 32, 18, 7],
+  // Nhóm VIIIA
+  "He": [2],
+  "Ne": [2, 8],
+  "Ar": [2, 8, 8],
+  "Kr": [2, 8, 18, 8],
+  "Xe": [2, 8, 18, 18, 8],
+  "Rn": [2, 8, 18, 32, 18, 8]
+};
+
 // Dữ liệu bán kính và các mảng khác giữ nguyên
 const theoreticalAtomicData = [
   // Chu kỳ 1:
@@ -155,8 +209,7 @@ let tableOffsetX = 0;
 let tableOffsetY = 0;
 let dragging = false;
 let prevMouseX, prevMouseY;
-const nucleusDiameterFixed = 6;
-
+const nucleusDiameterFixed = 7; // Đã sửa: kích thước hạt nhân bằng 7
 // Kích thước cơ sở của bảng
 const cols = 8;
 const rows = 6;
@@ -164,6 +217,8 @@ const spacingX = 150;
 const spacingY = 150;
 let initialZoomFactor;
 let zoomFactor;
+// Kích thước electron mới đặt là 3 (đã sửa)
+const electronSize = 3;
 
 function preload() {
   myFont = loadFont("Arial.ttf");
@@ -171,12 +226,11 @@ function preload() {
 
 function setup() {
   createCanvas(windowWidth, windowHeight, WEBGL);
-  // Nếu thiết bị không mạnh, có thể giảm pixelDensity xuống 1
   pixelDensity(1);
   smooth();
   textFont(myFont);
   textAlign(CENTER, CENTER);
-  angleMode(DEGREES);  // Sử dụng độ thay vì radian
+  angleMode(DEGREES);
 
   const baseZoomX = windowWidth / 1050;
   const baseZoomY = windowHeight / 750;
@@ -190,7 +244,6 @@ function setup() {
   toggleButton.mousePressed(toggleData);
 }
 
-// Hàm tự vẽ hình tròn mịn với số đỉnh cao theo mức độ zoom
 function drawSmoothEllipse(x, y, w, h, detail) {
   const a = w / 2;
   const b = h / 2;
@@ -240,10 +293,10 @@ function draw() {
             outerRadius = map(data.radius, 30, 300, 20, 60);
           }
           
-          // Xác định chi tiết động dựa trên zoomFactor:
-          // Khi zoom thấp (zoomFactor nhỏ) thì giảm chi tiết, khi zoom cao tăng
+          // Xác định chi tiết dựa trên zoomFactor
           const detailLevel = floor(map(zoomFactor, 0.1, 5, 40, 150));
           
+          // Vẽ các đường tròn (lớp electron) theo số chu kỳ của nguyên tố
           const numCircles = i + 1;
           noFill();
           stroke(240, 240, 80);
@@ -254,15 +307,53 @@ function draw() {
             drawSmoothEllipse(0, 0, d, d, detailLevel);
           }
           
+          // Vẽ hạt nhân dưới dạng hình cầu với hiệu ứng 3D
           if (data.symbol !== "") {
             push();
-              fill(255, 0, 0);
+              // Sử dụng ambientMaterial để tạo hiệu ứng bóng sáng cho hạt nhân
+              ambientMaterial(255, 0, 0);
               noStroke();
-              ellipse(0, 0, nucleusDiameterFixed, nucleusDiameterFixed);
-              fill(255);
-              textSize(3);
-              text(atomicNumbers[data.symbol] + "+", 0, 0);
+              sphere(nucleusDiameterFixed / 2);
+              // Vẽ số proton lên giữa (vấn đề hiển thị text trong 3D có thể bị phẳng)
+              push();
+                translate(0, 0, nucleusDiameterFixed);
+                fill(255);
+                textSize(3);
+                text(atomicNumbers[data.symbol] + "+", 0, 0);
+              pop();
             pop();
+          }
+          
+          // Vẽ các electron theo cấu hình, sử dụng sphere để tạo hiệu ứng hình cầu
+          if (data.symbol !== "" && electronConfigs[data.symbol]) {
+            let config = electronConfigs[data.symbol];
+            let nShells = min(config.length, numCircles);
+            // Với cấu hình theo thứ tự từ trong ra ngoài: s=0 (vòng trong nhất)
+            for (let s = 0; s < nShells; s++) {
+              // Tính bán kính cho mỗi lớp electron (s=0 là trong nhất)
+              let factor = (s + 1) / numCircles;
+              let d = outerRadius * 2 * factor;
+              let r = d / 2;
+              let numElectrons = config[s];
+              for (let e = 0; e < numElectrons; e++) {
+                let angle = 360 * e / numElectrons;
+                let ex = r * cos(angle);
+                let ey = r * sin(angle);
+                push();
+                  translate(ex, ey, 0);
+                  ambientMaterial(255);
+                  noStroke();
+                  sphere(electronSize / 2);
+                  // Vẽ ký hiệu '-' lên electron (text được đẩy ra phía trước để dễ đọc)
+                  push();
+                    translate(0, 0, electronSize);
+                    fill(0);
+                    textSize(3);
+                    text("-", 0, 0);
+                  pop();
+                pop();
+              }
+            }
           }
           
           push();
